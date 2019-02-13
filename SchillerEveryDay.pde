@@ -17,13 +17,14 @@ import javax.swing.JFileChooser;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
-import javax.swing.border.EmptyBorder; 
+import javax.swing.border.EmptyBorder;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.Date;
 import java.util.Calendar;
 import java.text.*;
+import java.awt.image.BufferedImage;
 
 
 // Debug Params
@@ -54,7 +55,7 @@ ArrayList<SchillerPic> picsToProcess = new ArrayList<SchillerPic>();
 // Font
 PFont f;
 
-// 
+//
 // Program starts here.
 //
 void setup() {
@@ -70,7 +71,7 @@ void setup() {
         System.exit(0);
     }
 
-    
+
     // autoChoose == no gui
     if (autoChoose) {
         setDefaultPaths();
@@ -107,7 +108,15 @@ void draw() {
 
             // Load image
             source = loadImage(currentPic.inputFile.getAbsolutePath());
-            display = loadImage(currentPic.inputFile.getAbsolutePath());
+
+            if (source.width > source.height) {
+                display = rotate(source.getImage(), -90.00);
+                source = rotate(source.getImage(), -90.00);
+            } else {
+                display = loadImage(currentPic.inputFile.getAbsolutePath());
+            }
+
+
             display.resize(displayWidth, displayHeight);
             s = createGraphics(source.width, source.height);
 
@@ -127,7 +136,7 @@ void draw() {
             // Save the final image.
             String output = outputDir.getAbsolutePath() + "/" + currentPic.outputString;
             if (!autoChoose) {
-                progressLabel.setText("  Status: Processing pic " + numFilesWritten + "/" + picsToProcess.size() + "..."); 
+                progressLabel.setText("  Status: Processing pic " + numFilesWritten + "/" + picsToProcess.size() + "...");
             }
             System.out.println("Saving File " + numFilesWritten++ + ": " + output);
             s.save(output);
@@ -143,10 +152,10 @@ void draw() {
             // Ran out of images to process. We're done!
             System.out.println("Done!");
 
-            // If we are in GUI mode, we're gonna reset everything 
+            // If we are in GUI mode, we're gonna reset everything
             // if they want to process pics again.
             if (!autoChoose) {
-                progressLabel.setText("  Status: Done!"); 
+                progressLabel.setText("  Status: Done!");
                 picsToProcess.clear();
                 fileIndex = 0;
                 numFilesWritten = 1;
@@ -170,7 +179,73 @@ void keyPressed() {
     if (key == 'q') {
         System.exit(0);
     }
-} 
+}
+
+/**
+ * Rotates an image. Actually rotates a new copy of the image.
+ *
+ * @param img The image to be rotated
+ * @param angle The angle in degrees
+ * @return The rotated image
+ */
+static PImage rotate(Image img, double angle) {
+    double sin = Math.abs(Math.sin(Math.toRadians(angle))),
+           cos = Math.abs(Math.cos(Math.toRadians(angle)));
+
+    int w = img.getWidth(null), h = img.getHeight(null);
+
+    int neww = (int) Math.floor(w*cos + h*sin),
+        newh = (int) Math.floor(h*cos + w*sin);
+
+    BufferedImage bimg = new BufferedImage(neww, newh, BufferedImage.TYPE_INT_RGB);
+    Graphics2D g = bimg.createGraphics();
+
+    g.translate((neww-w)/2, (newh-h)/2);
+    g.rotate(Math.toRadians(angle), w/2, h/2);
+    g.drawRenderedImage(toBufferedImage(img), null);
+    g.dispose();
+
+    return getAsImage(bimg);
+}
+
+static PImage getAsImage(BufferedImage bimg) {
+    try {
+        PImage img=new PImage(bimg.getWidth(),bimg.getHeight(),PConstants.ARGB);
+        bimg.getRGB(0, 0, img.width, img.height, img.pixels, 0, img.width);
+        img.updatePixels();
+        return img;
+    }
+    catch(Exception e) {
+        System.err.println("Can't create image from buffer");
+        e.printStackTrace();
+    }
+    return null;
+}
+
+/**
+ * Converts a given Image into a BufferedImage
+ *
+ * @param img The Image to be converted
+ * @return The converted BufferedImage
+ */
+public static BufferedImage toBufferedImage(Image img)
+{
+    if (img instanceof BufferedImage)
+    {
+        return (BufferedImage) img;
+    }
+
+    // Create a buffered image with transparency
+    BufferedImage bimage = new BufferedImage(img.getWidth(null), img.getHeight(null), BufferedImage.TYPE_INT_ARGB);
+
+    // Draw the image on to the buffered image
+    Graphics2D bGr = bimage.createGraphics();
+    bGr.drawImage(img, 0, 0, null);
+    bGr.dispose();
+
+    // Return the buffered image
+    return bimage;
+}
 
 
 ///////////////////////////
@@ -219,7 +294,7 @@ JFrame controlFrame = new JFrame("Schiller Every Day");
 void createAndShowGui() {
     goBtn.setEnabled(false);
 
-    controlFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); 
+    controlFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
     JPanel guiPanel = new JPanel();
     guiPanel.setLayout(new BoxLayout(guiPanel, BoxLayout.Y_AXIS));
@@ -286,7 +361,7 @@ void createAndShowGui() {
 
 // Takes a file and if it conforms to the format for Schillers
 // project ("YYYYMMDD_*.jpg") then it will parse it and push
-// it onto our picsToProcess Array. 
+// it onto our picsToProcess Array.
 void processFile(File f) {
     String name = f.getName();
     String pattern = "(\\d\\d\\d\\d)(\\d\\d)(\\d\\d)_.*\\.jpg";
@@ -303,7 +378,7 @@ void processFile(File f) {
         } catch (ParseException ex) {
             System.out.println("Parse Exception: " + ex.toString());
         }
-    } 
+    }
 }
 
 // Build the SchillerPic object and push it on the array
@@ -372,7 +447,7 @@ void infoBox(String infoMessage, String titleBar)
 public class SchillerPic {
     public File inputFile;
     public Date dateTaken;
-    public int picNumber; 
+    public int picNumber;
     public String outputString;
     public SchillerPic(File f, Date d) {
         inputFile = f;
@@ -425,12 +500,12 @@ void drawBlackBars(SchillerPic pic) {
     s.strokeWeight(1);
 
     // Lower left
-    zRect(-20, display.height-barHeight, 140, barHeight, 100);
+    zRect(-10, display.height-barHeight, 150, barHeight, 100);
 
     // Lower right
     zRect(display.width-103, display.height-barHeight, 190, barHeight, 100); // Days
 
-    if (pic.picNumber > 365) {
+    if (pic.picNumber >= 365) {
         zRect(display.width-101, display.height-(barHeight*2), 190, barHeight, 100); // Years
     }
 }
@@ -445,11 +520,11 @@ void drawText(SchillerPic pic) {
     // Date
     zFill(250);
     final SimpleDateFormat df = new SimpleDateFormat("MM/dd/yyyy");
-    zText(df.format(pic.dateTaken),9,display.height-heightOffBottom); 
+    zText(df.format(pic.dateTaken),9,display.height-heightOffBottom);
 
     // Year and Days Labels
     zFill(150);
-    if (pic.picNumber > 365) {
+    if (pic.picNumber >= 365) {
         zText("Years:", display.width-94, display.height-barHeight-heightOffBottom);
     }
     zText("Days:", display.width-96, display.height-heightOffBottom);
@@ -459,15 +534,15 @@ void drawText(SchillerPic pic) {
     s.textFont(f,17*ratio);
     int bottomOffset = 9;
     zFill(250);
-    if (pic.picNumber > 365) {
-        int displayYears = (((pic.picNumber-1) / 365));
+    if (pic.picNumber >= 365) {
+        int displayYears = getNumberOfYears(pic.picNumber);
         String sYears = "";
         if (displayYears < 10) {
             sYears = "  ";
         }
-        zText(sYears + displayYears, display.width-28, display.height-barHeight-bottomOffset); 
+        zText(sYears + displayYears, display.width-28, display.height-barHeight-bottomOffset);
     }
-    int displayNum = (((pic.picNumber-1) % 365) + 1);
+    int displayNum = getDayOfYear(pic.picNumber);
     String sDays = "";
     int daysOffset = 38;
     if (displayNum < 10) {
@@ -475,7 +550,24 @@ void drawText(SchillerPic pic) {
     } else if (displayNum < 100) {
         sDays = "  ";
     }
-    zText(sDays + displayNum, display.width-daysOffset, display.height-bottomOffset); 
+    zText(sDays + displayNum, display.width-daysOffset, display.height-bottomOffset);
+}
+
+int getDayOfYear(int picNumber) {
+    return picNumber == 730 || picNumber == 2191 ? 365
+        : getLeapYearCorrectedDay(picNumber) % 365;
+}
+
+int getNumberOfYears(int picNumber) {
+    return (picNumber - getNumberOfLeapDaysThisYear(picNumber)) / 365;
+}
+
+int getLeapYearCorrectedDay(int picNumber) {
+    return picNumber - (picNumber < 730 ? 0 : (picNumber < 2192 ? 1 : 2));
+}
+
+int getNumberOfLeapDaysThisYear(int picNumber) {
+    return picNumber < 366 ? 0 : 1;
 }
 
 void zFill(int c) {
@@ -505,7 +597,7 @@ void drawNumberOutlines(SchillerPic pic) {
     int diffInHeight = barHeight-outlineHeight;
     zRect(display.width-outlineWidth-5, display.height-outlineHeight-(diffInHeight/2), outlineWidth, outlineHeight, 8);
 
-    if (pic.picNumber > 365) {
+    if (pic.picNumber >=365) {
         zRect(display.width-outlineWidth2-5, display.height-outlineHeight-(diffInHeight/2)-barHeight, outlineWidth2, outlineHeight, 8);
     }
 }
@@ -514,4 +606,3 @@ void zRect(int x, int y, int w, int h, int r) {
     rect(x,y,w,h,r);
     s.rect(x*ratio, y*ratio, w*ratio, h*ratio, r*ratio);
 }
-
